@@ -1,16 +1,16 @@
 use starknet::ContractAddress;
 
 #[starknet::interface]
-pub trait ISoyBank<TContractState> {
+pub trait ISoyBank<TState> {
     fn deposit(
-        ref self: TContractState,
+        ref self: TState,
         amount: u256,
         user: ContractAddress,
         hook_selector: felt252,
         hook_data: Span<felt252>,
     );
-    fn withdraw(ref self: TContractState, amount: u256);
-    fn get_balance(self: @TContractState) -> u256;
+    fn withdraw(ref self: TState, amount: u256);
+    fn get_balance(self: @TState) -> u256;
 }
 
 #[starknet::contract]
@@ -60,7 +60,7 @@ mod SoyBank {
                 let accepted: bool = Serde::<bool>::deserialize(ref result).unwrap();
                 assert(accepted, 'The present was not accepted');
             }
-
+            
             self.currency.read().transfer_from(caller, get_contract_address(), amount);
         }
 

