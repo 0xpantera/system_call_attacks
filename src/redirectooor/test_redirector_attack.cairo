@@ -58,7 +58,6 @@ fn test_redirector_attack() {
         .class_hash
     );
 
-    println!("Before attack");
     start_cheat_caller_address(redirector_address, attacker);
     redirector_dispatcher.redirect_the_call(
         mallory_hash_class,
@@ -68,7 +67,6 @@ fn test_redirector_attack() {
     
     // ATTACK END //
 
-    println!("After attack");
     // Call again to ensure redirector doesn't work (should panic)
     let _result = *redirector_dispatcher.redirect_the_call(
         identity_class_hash, 
